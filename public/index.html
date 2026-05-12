@@ -7,51 +7,23 @@
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;font-family:'Inter',sans-serif;overflow:hidden}
-
-    #ad-top{
-      position:fixed;top:0;left:0;right:0;height:60px;
-      background:#f0f0f0;border-bottom:1px solid #ddd;
-      display:flex;align-items:center;justify-content:center;
-      z-index:200;-webkit-transform:translateZ(0);
-    }
+    #ad-top{position:fixed;top:0;left:0;right:0;height:60px;background:#f0f0f0;border-bottom:1px solid #ddd;display:flex;align-items:center;justify-content:center;z-index:200;-webkit-transform:translateZ(0)}
     #ad-top span{font-size:11px;color:#bbb;letter-spacing:2px;text-transform:uppercase}
-
-    #header{
-      position:fixed;top:60px;left:0;right:0;height:48px;
-      background:#fff;border-bottom:1px solid #e5e5e3;
-      display:flex;align-items:center;justify-content:space-between;
-      padding:0 16px;z-index:100;-webkit-transform:translateZ(0);
-    }
+    #header{position:fixed;top:60px;left:0;right:0;height:48px;background:#fff;border-bottom:1px solid #e5e5e3;display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100;-webkit-transform:translateZ(0)}
     #header-left{display:flex;align-items:center;gap:8px}
     #header h1{font-size:15px;font-weight:700;color:#1a1a1a;margin:0}
     .badge{font-size:10px;padding:2px 8px;border-radius:99px;background:#dcfce7;color:#166534}
     #stats-mini{display:flex;gap:12px;font-size:13px}
     .stat-pill{display:flex;align-items:center;gap:5px;font-weight:600}
     .sdot{width:9px;height:9px;border-radius:50%;display:inline-block}
-
     #map{position:fixed;top:108px;left:0;right:0;bottom:70px;width:100%;height:calc(100vh - 178px)}
-
-    #legend{
-      position:fixed;bottom:78px;left:50%;transform:translateX(-50%);
-      background:rgba(255,255,255,0.95);border:1px solid #e5e5e3;
-      border-radius:20px;padding:6px 16px;
-      display:flex;gap:14px;font-size:11px;color:#555;z-index:10;
-      white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.08);
-      -webkit-transform:translateX(-50%) translateZ(0);
-    }
+    #legend{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.95);border:1px solid #e5e5e3;border-radius:20px;padding:6px 16px;display:flex;gap:14px;font-size:11px;color:#555;z-index:10;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
     .ldot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle}
-
-    #ad-bottom{
-      position:fixed;bottom:0;left:0;right:0;height:70px;
-      background:#f0f0f0;border-top:1px solid #ddd;
-      display:flex;align-items:center;justify-content:center;
-      z-index:200;-webkit-transform:translateZ(0);
-    }
+    #ad-bottom{position:fixed;bottom:0;left:0;right:0;height:70px;background:#f0f0f0;border-top:1px solid #ddd;display:flex;align-items:center;justify-content:center;z-index:200;-webkit-transform:translateZ(0)}
     #ad-bottom span{font-size:11px;color:#bbb;letter-spacing:2px;text-transform:uppercase}
-
     .vote-box{font-family:sans-serif;padding:6px 2px;min-width:220px}
     .vote-box strong{font-size:14px;display:block;margin-bottom:2px;color:#1a1a1a}
-    .vote-box .addr{font-size:11px;color:#888;margin-bottom:12px;display:block}
+    .vote-box .addr{font-size:11px;color:#888;margin-bottom:10px;display:block}
     .vote-btns{display:flex;gap:8px;margin-bottom:8px}
     .vote-btn{flex:1;padding:10px 4px;border:1.5px solid;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:#fff}
     .vote-btn.hay{border-color:#639922;color:#3B6D11}
@@ -60,6 +32,7 @@
     .vote-btn.nohay:active{background:#FCEBEB}
     .vote-counts{font-size:11px;color:#aaa;text-align:center;margin-top:4px}
     .vote-msg{font-size:12px;text-align:center;padding:4px 0;display:none;font-weight:600}
+    .directions-btn{display:block;width:100%;margin-top:10px;padding:9px;background:#4285F4;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none}
   </style>
 </head>
 <body>
@@ -92,11 +65,12 @@
 <script>
 const API = '';
 let map, markers = {}, infoWindow, allStations = [];
+let userLat = null, userLng = null, userMarker = null;
 
 async function initMap() {
   map = new google.maps.Map(document.getElementById('map'), {
     center: { lat: -0.2201641, lng: -78.5123274 },
-    zoom: 12,
+    zoom: 13,
     styles: [
       { featureType: 'poi', stylers: [{ visibility: 'off' }] },
       { featureType: 'transit', stylers: [{ visibility: 'off' }] },
@@ -106,7 +80,32 @@ async function initMap() {
     fullscreenControl: false,
     zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER },
   });
+
   infoWindow = new google.maps.InfoWindow();
+
+  // GPS en tiempo real
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(
+      pos => {
+        userLat = pos.coords.latitude;
+        userLng = pos.coords.longitude;
+        const latlng = { lat: userLat, lng: userLng };
+        if (!userMarker) {
+          map.setCenter(latlng);
+          userMarker = new google.maps.Marker({
+            position: latlng, map,
+            icon: { path: google.maps.SymbolPath.CIRCLE, fillColor: '#4285F4', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3, scale: 10 },
+            title: 'Tu ubicación', zIndex: 999,
+          });
+        } else {
+          userMarker.setPosition(latlng);
+        }
+      },
+      err => console.warn('GPS:', err),
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+    );
+  }
+
   try { await loadStations(); } catch(e) { console.warn(e); }
   connectSSE();
 }
@@ -132,6 +131,9 @@ function addOrUpdateMarker(s) {
 
 function showVoteWindow(s, marker) {
   const total = (s.votos_hay||0) + (s.votos_no_hay||0);
+  const mapsUrl = userLat
+    ? `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${s.lat},${s.lng}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
   infoWindow.setContent(`
     <div class="vote-box">
       <strong>${s.nombre}</strong>
@@ -142,6 +144,7 @@ function showVoteWindow(s, marker) {
       </div>
       <div class="vote-counts" id="vc-${s.id}">${total > 0 ? total+' votos · '+(s.votos_hay||0)+' sí / '+(s.votos_no_hay||0)+' no' : 'Sin votos — sé el primero'}</div>
       <div class="vote-msg" id="vm-${s.id}"></div>
+      <a class="directions-btn" href="${mapsUrl}" target="_blank">📍 Cómo llegar</a>
     </div>
   `);
   infoWindow.open(map, marker);
@@ -151,8 +154,7 @@ async function votar(id, tieneGasolina) {
   const msg = document.getElementById('vm-'+id);
   try {
     const res = await fetch(API+'/api/vote', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+      method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({gasolinera_id:id, tiene_gasolina:tieneGasolina}),
     });
     const data = await res.json();
@@ -160,10 +162,7 @@ async function votar(id, tieneGasolina) {
     if (data.station) {
       addOrUpdateMarker(data.station);
       const vc = document.getElementById('vc-'+id);
-      if (vc) {
-        const t = (data.station.votos_hay||0)+(data.station.votos_no_hay||0);
-        vc.textContent = t+' votos · '+(data.station.votos_hay||0)+' sí / '+(data.station.votos_no_hay||0)+' no';
-      }
+      if (vc) { const t=(data.station.votos_hay||0)+(data.station.votos_no_hay||0); vc.textContent=t+' votos · '+(data.station.votos_hay||0)+' sí / '+(data.station.votos_no_hay||0)+' no'; }
       updateCounts();
     }
   } catch(e) {
@@ -175,11 +174,7 @@ function markerIcon(s) {
   const total = (s.votos_hay||0)+(s.votos_no_hay||0);
   let color = '#888888';
   if (total >= 2) color = s.tiene_gasolina ? '#639922' : '#E24B4A';
-  return {
-    path: google.maps.SymbolPath.CIRCLE,
-    fillColor: color, fillOpacity: 1,
-    strokeColor: '#ffffff', strokeWeight: 2, scale: 9,
-  };
+  return { path: google.maps.SymbolPath.CIRCLE, fillColor: color, fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2, scale: 9 };
 }
 
 function updateCounts() {
@@ -192,15 +187,9 @@ function updateCounts() {
 function connectSSE() {
   const es = new EventSource(API+'/api/events');
   es.addEventListener('message', e => {
-    try {
-      const {type, station} = JSON.parse(e.data);
-      if (type==='status_update') { addOrUpdateMarker(station); updateCounts(); }
-    } catch(e) {}
+    try { const {type,station}=JSON.parse(e.data); if(type==='status_update'){addOrUpdateMarker(station);updateCounts();} } catch(e) {}
   });
-  es.onerror = () => {
-    document.getElementById('live-badge').textContent = 'RECONECTANDO...';
-    setTimeout(()=>{ document.getElementById('live-badge').textContent = 'EN VIVO'; }, 5000);
-  };
+  es.onerror = () => { document.getElementById('live-badge').textContent='RECONECTANDO...'; setTimeout(()=>{document.getElementById('live-badge').textContent='EN VIVO';},5000); };
 }
 </script>
 </body>
