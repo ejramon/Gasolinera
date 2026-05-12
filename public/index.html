@@ -15,6 +15,17 @@
     #stats{position:fixed;top:72px;right:16px;background:#fff;border:1px solid #e5e5e3;border-radius:10px;padding:14px 16px;font-size:13px;z-index:10;min-width:130px}
     #stats p{color:#888;font-size:11px;margin-bottom:4px}
     .snum{font-size:22px;font-weight:600;margin-bottom:10px}
+    .vote-box{font-family:sans-serif;padding:4px 0;min-width:200px}
+    .vote-box strong{font-size:13px;display:block;margin-bottom:2px}
+    .vote-box .addr{font-size:11px;color:#666;margin-bottom:10px;display:block}
+    .vote-btns{display:flex;gap:8px;margin-bottom:8px}
+    .vote-btn{flex:1;padding:8px 4px;border:1px solid;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff}
+    .vote-btn.hay{border-color:#639922;color:#3B6D11}
+    .vote-btn.hay:hover{background:#EAF3DE}
+    .vote-btn.nohay{border-color:#E24B4A;color:#A32D2D}
+    .vote-btn.nohay:hover{background:#FCEBEB}
+    .vote-counts{font-size:11px;color:#888;text-align:center}
+    .vote-msg{font-size:12px;text-align:center;padding:4px 0;display:none}
   </style>
 </head>
 <body>
@@ -37,6 +48,7 @@
 
 <div id="legend">
   <span><span class="dot" style="background:#639922"></span>Hay gasolina</span>
+  <span><span class="dot" style="background:#888"></span>Sin votos</span>
   <span><span class="dot" style="background:#E24B4A"></span>Sin gasolina</span>
 </div>
 
@@ -44,7 +56,7 @@
 
 <script>
 const API = '';
-let map, markers = {}, infoWindow;
+let map, markers = {}, infoWindow, allStations = [];
 
 async function initMap() {
   map = new google.maps.Map(document.getElementById('map'), {
@@ -58,58 +70,99 @@ async function initMap() {
     streetViewControl: false,
     fullscreenControl: false,
   });
-
   infoWindow = new google.maps.InfoWindow();
-
-  try { await loadStations(); } catch(e) { console.warn('Estaciones no cargaron:', e); }
-
+  try { await loadStations(); } catch(e) { console.warn('Error cargando estaciones:', e); }
   connectSSE();
 }
 
 async function loadStations() {
   const res = await fetch(API + '/api/stations');
   if (!res.ok) throw new Error('API error ' + res.status);
-  const stations = await res.json();
-  if (!Array.isArray(stations)) throw new Error('Respuesta inesperada');
-  stations.forEach(addOrUpdateMarker);
-  updateCounts(stations);
+  allStations = await res.json();
+  if (!Array.isArray(allStations)) throw new Error('Respuesta inesperada');
+  allStations.forEach(addOrUpdateMarker);
+  updateCounts();
 }
 
 function addOrUpdateMarker(s) {
-  if (markers[s.id]) { markers[s.id].setIcon(markerIcon(s.tiene_gasolina)); return; }
+  if (markers[s.id]) {
+    markers[s.id].setIcon(markerIcon(s));
+    return;
+  }
   const marker = new google.maps.Marker({
     position: { lat: parseFloat(s.lat), lng: parseFloat(s.lng) },
-    map, title: s.nombre, icon: markerIcon(s.tiene_gasolina),
+    map, title: s.nombre, icon: markerIcon(s),
   });
-  marker.addListener('click', () => {
-    infoWindow.setContent(`
-      <div style="font-family:sans-serif;padding:4px 0">
-        <strong style="font-size:13px">${s.nombre}</strong><br>
-        <span style="font-size:11px;color:#666">${s.direccion || ''}</span><br>
-        <span style="font-size:12px;color:${s.tiene_gasolina ? '#3B6D11' : '#A32D2D'};font-weight:600;margin-top:4px;display:inline-block">
-          ${s.tiene_gasolina ? '✓ Hay gasolina' : '✗ Sin gasolina'}
-        </span>
-        ${s.updated_at ? `<br><span style="font-size:11px;color:#999">Actualizado: ${s.updated_at}</span>` : ''}
-      </div>
-    `);
-    infoWindow.open(map, marker);
-  });
+  marker.addListener('click', () => showVoteWindow(s, marker));
   markers[s.id] = marker;
 }
 
-function markerIcon(hasGas) {
+function showVoteWindow(s, marker) {
+  const total = (s.votos_hay || 0) + (s.votos_no_hay || 0);
+  const content = `
+    <div class="vote-box">
+      <strong>${s.nombre}</strong>
+      <span class="addr">${s.direccion || ''}</span>
+      <div class="vote-btns">
+        <button class="vote-btn hay" onclick="votar(${s.id}, true)">Hay gasolina</button>
+        <button class="vote-btn nohay" onclick="votar(${s.id}, false)">Sin gasolina</button>
+      </div>
+      <div class="vote-counts" id="vc-${s.id}">${total > 0 ? total + ' votos · ' + (s.votos_hay||0) + ' hay / ' + (s.votos_no_hay||0) + ' no hay' : 'Sin votos aún'}</div>
+      <div class="vote-msg" id="vm-${s.id}"></div>
+    </div>
+  `;
+  infoWindow.setContent(content);
+  infoWindow.open(map, marker);
+}
+
+async function votar(id, tieneGasolina) {
+  const msg = document.getElementById('vm-' + id);
+  try {
+    const res = await fetch(API + '/api/vote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gasolinera_id: id, tiene_gasolina: tieneGasolina }),
+    });
+    const data = await res.json();
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.color = '#3B6D11';
+      msg.textContent = 'Voto registrado, gracias!';
+    }
+    if (data.station) {
+      addOrUpdateMarker(data.station);
+      const vc = document.getElementById('vc-' + id);
+      if (vc) {
+        const t = (data.station.votos_hay||0) + (data.station.votos_no_hay||0);
+        vc.textContent = t + ' votos · ' + (data.station.votos_hay||0) + ' hay / ' + (data.station.votos_no_hay||0) + ' no hay';
+      }
+      updateCounts();
+    }
+  } catch(e) {
+    if (msg) { msg.style.display='block'; msg.style.color='#A32D2D'; msg.textContent='Error al votar, intenta de nuevo'; }
+  }
+}
+
+function markerIcon(s) {
+  const total = (s.votos_hay || 0) + (s.votos_no_hay || 0);
+  let color = '#888888'; // gris = sin votos
+  if (total >= 3) color = s.tiene_gasolina ? '#639922' : '#E24B4A';
   return {
     path: google.maps.SymbolPath.CIRCLE,
-    fillColor: hasGas ? '#639922' : '#E24B4A',
-    fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2.5, scale: 11,
+    fillColor: color, fillOpacity: 1,
+    strokeColor: '#ffffff', strokeWeight: 2.5, scale: 11,
   };
 }
 
-function updateCounts(stations) {
-  document.getElementById('cnt-green').textContent = stations.filter(s => s.tiene_gasolina).length;
-  document.getElementById('cnt-red').textContent = stations.filter(s => !s.tiene_gasolina).length;
-  document.getElementById('last-update').textContent =
-    'Act. ' + new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+function updateCounts() {
+  fetch(API + '/api/stations').then(r => r.json()).then(stations => {
+    const green = stations.filter(s => s.tiene_gasolina && (s.votos_hay+s.votos_no_hay) >= 3).length;
+    const red = stations.filter(s => !s.tiene_gasolina && (s.votos_hay+s.votos_no_hay) >= 3).length;
+    document.getElementById('cnt-green').textContent = green;
+    document.getElementById('cnt-red').textContent = red;
+    document.getElementById('last-update').textContent =
+      'Act. ' + new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+  }).catch(()=>{});
 }
 
 function connectSSE() {
@@ -117,10 +170,7 @@ function connectSSE() {
   es.addEventListener('message', e => {
     try {
       const { type, station } = JSON.parse(e.data);
-      if (type === 'status_update') {
-        addOrUpdateMarker(station);
-        fetch(API + '/api/stations').then(r => r.json()).then(updateCounts).catch(()=>{});
-      }
+      if (type === 'status_update') { addOrUpdateMarker(station); updateCounts(); }
     } catch(e) {}
   });
   es.onerror = () => {
@@ -135,6 +185,5 @@ function connectSSE() {
   };
 }
 </script>
-
 </body>
 </html>
