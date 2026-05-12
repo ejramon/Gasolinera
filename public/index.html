@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"/>
   <title>GasolinaEC</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
@@ -29,29 +29,38 @@
     .stat-pill{display:flex;align-items:center;gap:5px;font-weight:600}
     .sdot{width:9px;height:9px;border-radius:50%;display:inline-block}
 
-    #map{position:fixed;top:108px;left:0;right:0;bottom:70px;width:100%;height:calc(100vh - 178px)}
+    #map{
+      position:fixed;top:108px;left:0;right:0;
+      bottom:calc(70px + env(safe-area-inset-bottom));
+      width:100%;
+    }
 
     #legend{
-      position:fixed;bottom:78px;left:50%;transform:translateX(-50%);
+      position:fixed;
+      bottom:calc(78px + env(safe-area-inset-bottom));
+      left:50%;
+      -webkit-transform:translateX(-50%) translateZ(0);
+      transform:translateX(-50%);
       background:rgba(255,255,255,0.95);border:1px solid #e5e5e3;
       border-radius:20px;padding:6px 16px;
       display:flex;gap:14px;font-size:11px;color:#555;z-index:10;
       white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.08);
-      -webkit-transform:translateX(-50%) translateZ(0);
     }
     .ldot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle}
 
     #ad-bottom{
-      position:fixed;bottom:0;left:0;right:0;height:70px;
+      position:fixed;bottom:0;left:0;right:0;
+      height:calc(70px + env(safe-area-inset-bottom));
       background:#f0f0f0;border-top:1px solid #ddd;
       display:flex;align-items:center;justify-content:center;
+      padding-bottom:env(safe-area-inset-bottom);
       z-index:200;-webkit-transform:translateZ(0);
     }
     #ad-bottom span{font-size:11px;color:#bbb;letter-spacing:2px;text-transform:uppercase}
 
     .vote-box{font-family:sans-serif;padding:6px 2px;min-width:220px}
     .vote-box strong{font-size:14px;display:block;margin-bottom:2px;color:#1a1a1a}
-    .vote-box .addr{font-size:11px;color:#888;margin-bottom:12px;display:block}
+    .vote-box .addr{font-size:11px;color:#888;margin-bottom:10px;display:block}
     .vote-btns{display:flex;gap:8px;margin-bottom:8px}
     .vote-btn{flex:1;padding:10px 4px;border:1.5px solid;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:#fff}
     .vote-btn.hay{border-color:#639922;color:#3B6D11}
@@ -60,6 +69,12 @@
     .vote-btn.nohay:active{background:#FCEBEB}
     .vote-counts{font-size:11px;color:#aaa;text-align:center;margin-top:4px}
     .vote-msg{font-size:12px;text-align:center;padding:4px 0;display:none;font-weight:600}
+    .directions-btn{
+      display:block;width:100%;margin-top:10px;padding:9px;
+      background:#4285F4;color:#fff;border:none;border-radius:10px;
+      font-size:13px;font-weight:600;cursor:pointer;text-align:center;
+      text-decoration:none;
+    }
   </style>
 </head>
 <body>
@@ -92,11 +107,15 @@
 <script>
 const API = '';
 let map, markers = {}, infoWindow, allStations = [];
+let userLat = null, userLng = null, userMarker = null;
 
 async function initMap() {
+  // Centro por defecto Quito
+  let center = { lat: -0.2201641, lng: -78.5123274 };
+
   map = new google.maps.Map(document.getElementById('map'), {
-    center: { lat: -0.2201641, lng: -78.5123274 },
-    zoom: 12,
+    center,
+    zoom: 13,
     styles: [
       { featureType: 'poi', stylers: [{ visibility: 'off' }] },
       { featureType: 'transit', stylers: [{ visibility: 'off' }] },
@@ -106,7 +125,44 @@ async function initMap() {
     fullscreenControl: false,
     zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER },
   });
+
   infoWindow = new google.maps.InfoWindow();
+
+  // Ubicación en tiempo real
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(
+      pos => {
+        userLat = pos.coords.latitude;
+        userLng = pos.coords.longitude;
+        const pos2 = { lat: userLat, lng: userLng };
+
+        if (!userMarker) {
+          // Primera vez — centrar mapa en usuario
+          map.setCenter(pos2);
+
+          userMarker = new google.maps.Marker({
+            position: pos2,
+            map,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: '#4285F4',
+              fillOpacity: 1,
+              strokeColor: '#fff',
+              strokeWeight: 3,
+              scale: 10,
+            },
+            title: 'Tu ubicación',
+            zIndex: 999,
+          });
+        } else {
+          userMarker.setPosition(pos2);
+        }
+      },
+      err => console.warn('Geolocation error:', err),
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+    );
+  }
+
   try { await loadStations(); } catch(e) { console.warn(e); }
   connectSSE();
 }
@@ -132,6 +188,10 @@ function addOrUpdateMarker(s) {
 
 function showVoteWindow(s, marker) {
   const total = (s.votos_hay||0) + (s.votos_no_hay||0);
+  const mapsUrl = userLat
+    ? `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${s.lat},${s.lng}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+
   infoWindow.setContent(`
     <div class="vote-box">
       <strong>${s.nombre}</strong>
@@ -142,6 +202,7 @@ function showVoteWindow(s, marker) {
       </div>
       <div class="vote-counts" id="vc-${s.id}">${total > 0 ? total+' votos · '+(s.votos_hay||0)+' sí / '+(s.votos_no_hay||0)+' no' : 'Sin votos — sé el primero'}</div>
       <div class="vote-msg" id="vm-${s.id}"></div>
+      <a class="directions-btn" href="${mapsUrl}" target="_blank">📍 Cómo llegar</a>
     </div>
   `);
   infoWindow.open(map, marker);
