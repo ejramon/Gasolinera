@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GasolinaEC — Mapa en vivo</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',sans-serif;background:#f4f4f2;color:#1a1a1a}
+    #header{background:#fff;border-bottom:1px solid #e5e5e3;padding:14px 20px;display:flex;align-items:center;gap:12px;position:fixed;top:0;left:0;right:0;z-index:100}
+    #header h1{font-size:16px;font-weight:600}
+    .badge{font-size:11px;padding:2px 9px;border-radius:99px;background:#dcfce7;color:#166534}
+    #map{position:fixed;top:56px;left:0;right:0;bottom:0}
+    #legend{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #e5e5e3;border-radius:10px;padding:10px 18px;display:flex;gap:18px;font-size:13px;color:#555;box-shadow:0 2px 8px rgba(0,0,0,0.08);z-index:10}
+    .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
+    #stats{position:fixed;top:72px;right:16px;background:#fff;border:1px solid #e5e5e3;border-radius:10px;padding:14px 16px;font-size:13px;z-index:10;min-width:130px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+    #stats p{color:#888;font-size:11px;margin-bottom:4px}
+    .snum{font-size:22px;font-weight:600;margin-bottom:10px}
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2"><path d="M3 22V8l9-4 9 4v14"/><path d="M9 22V12h6v10"/><path d="M14 6h2v4h-2z"/></svg>
+  <h1>GasolinaEC</h1>
+  <span class="badge" id="live-badge">EN VIVO</span>
+</div>
+
+<div id="map"></div>
+
+<div id="stats">
+  <p>Con gasolina</p>
+  <div class="snum" id="cnt-green" style="color:#3B6D11">—</div>
+  <p>Sin gasolina</p>
+  <div class="snum" id="cnt-red" style="color:#A32D2D">—</div>
+  <p style="margin-top:8px;font-size:10px" id="last-update">—</p>
+</div>
+
+<div id="legend">
+  <span><span class="dot" style="background:#639922"></span>Hay gasolina</span>
+  <span><span class="dot" style="background:#E24B4A"></span>Sin gasolina</span>
+</div>
+
+<!-- Reemplaza TU_API_KEY con tu clave de Google Maps -->
+<script src="https://maps.googleapis.com/maps/api/js?key=TU_API_KEY&callback=initMap" async defer></script>
+
+<script>
+const API = '';  // vacío = mismo origen, o pon 'http://localhost:3001'
+let map, markers = {}, infoWindow;
+
+async function initMap() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: -0.2201641, lng: -78.5123274 },  // Quito
+    zoom: 12,
+    styles: [
+      { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+      { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+    ],
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+  });
+
+  infoWindow = new google.maps.InfoWindow();
+  await loadStations();
+  connectSSE();
+}
+
+async function loadStations() {
+  const res = await fetch(API + '/api/stations');
+  const stations = await res.json();
+  stations.forEach(addOrUpdateMarker);
+  updateCounts();
+}
+
+function addOrUpdateMarker(s) {
+  if (markers[s.id]) {
+    markers[s.id].setIcon(markerIcon(s.tiene_gasolina));
+    return;
+  }
+  const marker = new google.maps.Marker({
+    position: { lat: parseFloat(s.lat), lng: parseFloat(s.lng) },
+    map,
+    title: s.nombre,
+    icon: markerIcon(s.tiene_gasolina),
+  });
+  marker.addListener('click', () => {
+    infoWindow.setContent(`
+      <div style="font-family:sans-serif;padding:4px 0">
+        <strong style="font-size:13px">${s.nombre}</strong><br>
+        <span style="font-size:11px;color:#666">${s.direccion || ''}</span><br>
+        <span style="font-size:12px;color:${s.tiene_gasolina ? '#3B6D11' : '#A32D2D'};font-weight:600;margin-top:4px;display:inline-block">
+          ${s.tiene_gasolina ? '✓ Hay gasolina' : '✗ Sin gasolina'}
+        </span>
+        ${s.updated_at ? `<br><span style="font-size:11px;color:#999">Actualizado: ${s.updated_at}</span>` : ''}
+      </div>
+    `);
+    infoWindow.open(map, marker);
+  });
+  markers[s.id] = marker;
+}
+
+function markerIcon(hasGas) {
+  return {
+    path: google.maps.SymbolPath.CIRCLE,
+    fillColor: hasGas ? '#639922' : '#E24B4A',
+    fillOpacity: 1,
+    strokeColor: '#ffffff',
+    strokeWeight: 2.5,
+    scale: 11,
+  };
+}
+
+function updateCounts() {
+  const vals = Object.values(markers);
+  // Re-fetch from server para counts precisos
+  fetch(API + '/api/stations').then(r => r.json()).then(stations => {
+    const green = stations.filter(s => s.tiene_gasolina).length;
+    const red = stations.filter(s => !s.tiene_gasolina).length;
+    document.getElementById('cnt-green').textContent = green;
+    document.getElementById('cnt-red').textContent = red;
+    document.getElementById('last-update').textContent =
+      'Act. ' + new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+  });
+}
+
+function connectSSE() {
+  const es = new EventSource(API + '/api/events');
+  es.addEventListener('message', e => {
+    const { type, station } = JSON.parse(e.data);
+    if (type === 'status_update') {
+      addOrUpdateMarker(station);
+      updateCounts();
+    }
+  });
+  es.onerror = () => {
+    document.getElementById('live-badge').textContent = 'RECONECTANDO...';
+    document.getElementById('live-badge').style.background = '#fef9c3';
+    document.getElementById('live-badge').style.color = '#854d0e';
+    setTimeout(() => {
+      document.getElementById('live-badge').textContent = 'EN VIVO';
+      document.getElementById('live-badge').style.background = '#dcfce7';
+      document.getElementById('live-badge').style.color = '#166534';
+    }, 5000);
+  };
+}
+</script>
+
+</body>
+</html>

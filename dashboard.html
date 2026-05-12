@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GasolinaEC — Panel Gasolinera</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',sans-serif;background:#f4f4f2;color:#1a1a1a;min-height:100vh;display:flex;flex-direction:column}
+    header{background:#fff;border-bottom:1px solid #e5e5e3;padding:14px 20px;display:flex;align-items:center;gap:12px}
+    header h1{font-size:16px;font-weight:600}
+    main{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem 1rem}
+    .card{background:#fff;border:1px solid #e5e5e3;border-radius:14px;padding:2rem;width:100%;max-width:380px;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+    label{font-size:13px;color:#666;display:block;margin-bottom:6px;margin-top:14px}
+    input{width:100%;border:1px solid #d5d5d3;border-radius:8px;padding:10px 12px;font-size:14px;outline:none;font-family:inherit}
+    input:focus{border-color:#888}
+    .btn{width:100%;padding:12px;border-radius:8px;border:1px solid #d5d5d3;background:#1a1a1a;color:#fff;font-size:14px;font-weight:500;cursor:pointer;margin-top:1.25rem;font-family:inherit}
+    .btn:hover{background:#333}
+    .btn-toggle{width:100%;padding:1.5rem 1rem;border-radius:12px;border:2px solid;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;line-height:1.5}
+    .btn-toggle.gas{background:#EAF3DE;color:#27500A;border-color:#97C459}
+    .btn-toggle.no-gas{background:#FCEBEB;color:#501313;border-color:#F09595}
+    .btn-toggle:active{transform:scale(0.98)}
+    .station-header{display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid #e5e5e3}
+    .station-icon{width:42px;height:42px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+    .meta{font-size:12px;color:#888;margin-top:10px;text-align:center;font-variant-numeric:tabular-nums}
+    .err{font-size:12px;color:#A32D2D;margin-top:8px;display:none}
+    .btn-logout{background:none;border:none;color:#888;font-size:13px;cursor:pointer;padding:10px 0;width:100%;margin-top:8px;font-family:inherit}
+    .btn-logout:hover{color:#1a1a1a}
+    #panel-login{display:block}
+    #panel-control{display:none}
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2"><path d="M3 22V8l9-4 9 4v14"/><path d="M9 22V12h6v10"/><path d="M14 6h2v4h-2z"/></svg>
+  <h1>GasolinaEC</h1>
+</header>
+
+<main>
+
+  <!-- LOGIN -->
+  <div id="panel-login" class="card">
+    <p style="font-size:17px;font-weight:600;margin-bottom:4px">Acceso gasolinera</p>
+    <p style="font-size:13px;color:#888">Ingresa con la cédula del propietario</p>
+
+    <label>Cédula</label>
+    <input id="cedula" type="text" placeholder="0912345678" maxlength="13" inputmode="numeric"/>
+
+    <label>Contraseña</label>
+    <input id="password" type="password" placeholder="••••••••"/>
+
+    <p id="login-err" class="err">Cédula o contraseña incorrectos</p>
+    <button class="btn" onclick="doLogin()">Ingresar →</button>
+  </div>
+
+  <!-- CONTROL PANEL -->
+  <div id="panel-control" class="card">
+    <div class="station-header">
+      <div class="station-icon">⛽</div>
+      <div>
+        <p style="font-size:15px;font-weight:600" id="s-nombre">—</p>
+        <p style="font-size:12px;color:#888" id="s-dir">—</p>
+      </div>
+    </div>
+
+    <p style="font-size:13px;color:#666;margin-bottom:12px">Estado actual del combustible:</p>
+
+    <button id="toggle-btn" class="btn-toggle gas" onclick="toggleFuel()">—</button>
+
+    <p class="meta" id="update-time">—</p>
+
+    <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+  </div>
+
+</main>
+
+<script>
+const API = '';
+let token = null;
+let stationId = null;
+let hasFuel = true;
+
+async function doLogin() {
+  const cedula = document.getElementById('cedula').value.trim();
+  const password = document.getElementById('password').value;
+  const err = document.getElementById('login-err');
+
+  if (!cedula || !password) { err.style.display = 'block'; err.textContent = 'Completa todos los campos'; return; }
+
+  try {
+    const res = await fetch(API + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cedula, password }),
+    });
+
+    if (!res.ok) { err.style.display = 'block'; err.textContent = 'Cédula o contraseña incorrectos'; return; }
+
+    const data = await res.json();
+    token = data.token;
+    stationId = data.station.id;
+    hasFuel = data.station.tiene_gasolina;
+
+    document.getElementById('s-nombre').textContent = data.station.nombre;
+    document.getElementById('s-dir').textContent = data.station.direccion || '';
+    err.style.display = 'none';
+
+    document.getElementById('panel-login').style.display = 'none';
+    document.getElementById('panel-control').style.display = 'block';
+    renderToggle();
+  } catch (e) {
+    err.style.display = 'block';
+    err.textContent = 'Error de conexión. Intenta de nuevo.';
+  }
+}
+
+async function toggleFuel() {
+  hasFuel = !hasFuel;
+  renderToggle();
+
+  try {
+    await fetch(API + '/api/stations/' + stationId + '/status', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+      },
+      body: JSON.stringify({ tiene_gasolina: hasFuel }),
+    });
+  } catch (e) {
+    hasFuel = !hasFuel;  // revertir si falla
+    renderToggle();
+    alert('Error al actualizar. Verifica tu conexión.');
+  }
+}
+
+function renderToggle() {
+  const btn = document.getElementById('toggle-btn');
+  if (hasFuel) {
+    btn.className = 'btn-toggle gas';
+    btn.innerHTML = 'Con gasolina<br><span style="font-size:12px;font-weight:400">Toca para marcar sin gasolina</span>';
+  } else {
+    btn.className = 'btn-toggle no-gas';
+    btn.innerHTML = 'Sin gasolina<br><span style="font-size:12px;font-weight:400">Toca para marcar con gasolina</span>';
+  }
+  document.getElementById('update-time').textContent =
+    'Actualizado: ' + new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function doLogout() {
+  token = null; stationId = null;
+  document.getElementById('cedula').value = '';
+  document.getElementById('password').value = '';
+  document.getElementById('panel-control').style.display = 'none';
+  document.getElementById('panel-login').style.display = 'block';
+}
+
+// Enter en inputs dispara login
+document.addEventListener('DOMContentLoaded', () => {
+  ['cedula','password'].forEach(id =>
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); })
+  );
+});
+</script>
+
+</body>
+</html>
