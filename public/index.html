@@ -12,7 +12,7 @@
       position:fixed;top:0;left:0;right:0;height:60px;
       background:#f0f0f0;border-bottom:1px solid #ddd;
       display:flex;align-items:center;justify-content:center;
-      z-index:200;
+      z-index:200;-webkit-transform:translateZ(0);
     }
     #ad-top span{font-size:11px;color:#bbb;letter-spacing:2px;text-transform:uppercase}
 
@@ -20,7 +20,7 @@
       position:fixed;top:60px;left:0;right:0;height:48px;
       background:#fff;border-bottom:1px solid #e5e5e3;
       display:flex;align-items:center;justify-content:space-between;
-      padding:0 16px;z-index:100;
+      padding:0 16px;z-index:100;-webkit-transform:translateZ(0);
     }
     #header-left{display:flex;align-items:center;gap:8px}
     #header h1{font-size:15px;font-weight:700;color:#1a1a1a;margin:0}
@@ -37,6 +37,7 @@
       border-radius:20px;padding:6px 16px;
       display:flex;gap:14px;font-size:11px;color:#555;z-index:10;
       white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.08);
+      -webkit-transform:translateX(-50%) translateZ(0);
     }
     .ldot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle}
 
@@ -44,7 +45,7 @@
       position:fixed;bottom:0;left:0;right:0;height:70px;
       background:#f0f0f0;border-top:1px solid #ddd;
       display:flex;align-items:center;justify-content:center;
-      z-index:200;
+      z-index:200;-webkit-transform:translateZ(0);
     }
     #ad-bottom span{font-size:11px;color:#bbb;letter-spacing:2px;text-transform:uppercase}
 
@@ -173,7 +174,7 @@ async function votar(id, tieneGasolina) {
 function markerIcon(s) {
   const total = (s.votos_hay||0)+(s.votos_no_hay||0);
   let color = '#888888';
-  if (total >= 3) color = s.tiene_gasolina ? '#639922' : '#E24B4A';
+  if (total >= 2) color = s.tiene_gasolina ? '#639922' : '#E24B4A';
   return {
     path: google.maps.SymbolPath.CIRCLE,
     fillColor: color, fillOpacity: 1,
@@ -183,8 +184,8 @@ function markerIcon(s) {
 
 function updateCounts() {
   fetch(API+'/api/stations').then(r=>r.json()).then(stations => {
-    document.getElementById('cnt-green').textContent = stations.filter(s=>s.tiene_gasolina&&(s.votos_hay+s.votos_no_hay)>=3).length;
-    document.getElementById('cnt-red').textContent = stations.filter(s=>!s.tiene_gasolina&&(s.votos_hay+s.votos_no_hay)>=3).length;
+    document.getElementById('cnt-green').textContent = stations.filter(s=>s.tiene_gasolina&&(s.votos_hay+s.votos_no_hay)>=2).length;
+    document.getElementById('cnt-red').textContent = stations.filter(s=>!s.tiene_gasolina&&(s.votos_hay+s.votos_no_hay)>=2).length;
   }).catch(()=>{});
 }
 
