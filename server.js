@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -19,6 +20,11 @@ const pool = new Pool({
 
 app.use(cors());
 app.use(express.json());
+app.get('/', (req, res) => {
+  let html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8');
+  html = html.replace('GOOGLE_MAPS_KEY', process.env.GOOGLE_MAPS_KEY || '');
+  res.send(html);
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── SSE: clientes conectados al mapa en tiempo real ───────────────────────
@@ -180,3 +186,4 @@ app.listen(PORT, () => {
   console.log(`GasolinaEC API corriendo en puerto ${PORT}`);
   console.log(`SSE clients activos: ${sseClients.size}`);
 });
+
