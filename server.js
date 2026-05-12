@@ -98,7 +98,7 @@ app.post('/api/vote', async (req, res) => {
         COUNT(*) FILTER (WHERE tiene_gasolina = false) AS no_hay
       FROM votos
       WHERE gasolinera_id = $1
-        AND created_at > NOW() - INTERVAL '6 hours'
+        AND created_at > NOW() - INTERVAL '20 minutes'
     `, [gasolinera_id]);
 
     const hay = parseInt(counts[0].hay);
@@ -107,7 +107,7 @@ app.post('/api/vote', async (req, res) => {
 
     // Calcular estado: necesita al menos 3 votos, y 60% de mayoría
     let nuevo_estado = null;
-    if (total >= 3) {
+    if (total >= 2) {
       if (hay / total >= 0.6) nuevo_estado = true;
       else if (no_hay / total >= 0.6) nuevo_estado = false;
     }
