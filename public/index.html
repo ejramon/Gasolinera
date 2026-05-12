@@ -2,58 +2,92 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GasolinaEC — Mapa en vivo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>GasolinaEC</title>
   <style>
-    html,body{margin:0;padding:0;height:100%;font-family:'Inter',sans-serif;background:#f4f4f2;color:#1a1a1a}
-    #header{background:#fff;border-bottom:1px solid #e5e5e3;padding:14px 20px;display:flex;align-items:center;gap:12px;position:fixed;top:0;left:0;right:0;z-index:100;height:56px}
-    #header h1{font-size:16px;font-weight:600;margin:0}
-    .badge{font-size:11px;padding:2px 9px;border-radius:99px;background:#dcfce7;color:#166534}
-    #map{position:absolute;top:56px;left:0;right:0;bottom:0}
-    #legend{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #e5e5e3;border-radius:10px;padding:10px 18px;display:flex;gap:18px;font-size:13px;color:#555;z-index:10}
-    .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
-    #stats{position:fixed;top:72px;right:16px;background:#fff;border:1px solid #e5e5e3;border-radius:10px;padding:14px 16px;font-size:13px;z-index:10;min-width:130px}
-    #stats p{color:#888;font-size:11px;margin-bottom:4px}
-    .snum{font-size:22px;font-weight:600;margin-bottom:10px}
-    .vote-box{font-family:sans-serif;padding:4px 0;min-width:200px}
-    .vote-box strong{font-size:13px;display:block;margin-bottom:2px}
-    .vote-box .addr{font-size:11px;color:#666;margin-bottom:10px;display:block}
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;font-family:'Inter',sans-serif;overflow:hidden}
+
+    #ad-top{
+      position:fixed;top:0;left:0;right:0;height:60px;
+      background:#f0f0f0;border-bottom:1px solid #ddd;
+      display:flex;align-items:center;justify-content:center;
+      z-index:200;
+    }
+    #ad-top span{font-size:11px;color:#bbb;letter-spacing:2px;text-transform:uppercase}
+
+    #header{
+      position:fixed;top:60px;left:0;right:0;height:48px;
+      background:#fff;border-bottom:1px solid #e5e5e3;
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 16px;z-index:100;
+    }
+    #header-left{display:flex;align-items:center;gap:8px}
+    #header h1{font-size:15px;font-weight:700;color:#1a1a1a;margin:0}
+    .badge{font-size:10px;padding:2px 8px;border-radius:99px;background:#dcfce7;color:#166534}
+    #stats-mini{display:flex;gap:12px;font-size:13px}
+    .stat-pill{display:flex;align-items:center;gap:5px;font-weight:600}
+    .sdot{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+    #map{position:fixed;top:108px;left:0;right:0;bottom:70px}
+
+    #legend{
+      position:fixed;bottom:78px;left:50%;transform:translateX(-50%);
+      background:rgba(255,255,255,0.95);border:1px solid #e5e5e3;
+      border-radius:20px;padding:6px 16px;
+      display:flex;gap:14px;font-size:11px;color:#555;z-index:10;
+      white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.08);
+    }
+    .ldot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle}
+
+    #ad-bottom{
+      position:fixed;bottom:0;left:0;right:0;height:70px;
+      background:#f0f0f0;border-top:1px solid #ddd;
+      display:flex;align-items:center;justify-content:center;
+      z-index:200;
+    }
+    #ad-bottom span{font-size:11px;color:#bbb;letter-spacing:2px;text-transform:uppercase}
+
+    .vote-box{font-family:sans-serif;padding:6px 2px;min-width:220px}
+    .vote-box strong{font-size:14px;display:block;margin-bottom:2px;color:#1a1a1a}
+    .vote-box .addr{font-size:11px;color:#888;margin-bottom:12px;display:block}
     .vote-btns{display:flex;gap:8px;margin-bottom:8px}
-    .vote-btn{flex:1;padding:8px 4px;border:1px solid;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff}
+    .vote-btn{flex:1;padding:10px 4px;border:1.5px solid;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:#fff}
     .vote-btn.hay{border-color:#639922;color:#3B6D11}
-    .vote-btn.hay:hover{background:#EAF3DE}
+    .vote-btn.hay:active{background:#EAF3DE}
     .vote-btn.nohay{border-color:#E24B4A;color:#A32D2D}
-    .vote-btn.nohay:hover{background:#FCEBEB}
-    .vote-counts{font-size:11px;color:#888;text-align:center}
-    .vote-msg{font-size:12px;text-align:center;padding:4px 0;display:none}
+    .vote-btn.nohay:active{background:#FCEBEB}
+    .vote-counts{font-size:11px;color:#aaa;text-align:center;margin-top:4px}
+    .vote-msg{font-size:12px;text-align:center;padding:4px 0;display:none;font-weight:600}
   </style>
 </head>
 <body>
 
+<div id="ad-top"><span>espacio publicitario</span></div>
+
 <div id="header">
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2"><path d="M3 22V8l9-4 9 4v14"/><path d="M9 22V12h6v10"/><path d="M14 6h2v4h-2z"/></svg>
-  <h1>GasolinaEC</h1>
-  <span class="badge" id="live-badge">EN VIVO</span>
+  <div id="header-left">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2.5"><path d="M3 22V8l9-4 9 4v14"/><path d="M9 22V12h6v10"/><path d="M14 6h2v4h-2z"/></svg>
+    <h1>GasolinaEC</h1>
+    <span class="badge" id="live-badge">EN VIVO</span>
+  </div>
+  <div id="stats-mini">
+    <div class="stat-pill"><span class="sdot" style="background:#639922"></span><span id="cnt-green">—</span></div>
+    <div class="stat-pill"><span class="sdot" style="background:#E24B4A"></span><span id="cnt-red">—</span></div>
+  </div>
 </div>
 
 <div id="map"></div>
 
-<div id="stats">
-  <p>Con gasolina</p>
-  <div class="snum" id="cnt-green" style="color:#3B6D11">—</div>
-  <p>Sin gasolina</p>
-  <div class="snum" id="cnt-red" style="color:#A32D2D">—</div>
-  <p style="margin-top:8px;font-size:10px" id="last-update">—</p>
+<div id="legend">
+  <span><span class="ldot" style="background:#639922"></span>Hay</span>
+  <span><span class="ldot" style="background:#888"></span>Sin votos</span>
+  <span><span class="ldot" style="background:#E24B4A"></span>No hay</span>
 </div>
 
-<div id="legend">
-  <span><span class="dot" style="background:#639922"></span>Hay gasolina</span>
-  <span><span class="dot" style="background:#888"></span>Sin votos</span>
-  <span><span class="dot" style="background:#E24B4A"></span>Sin gasolina</span>
-</div>
+<div id="ad-bottom"><span>espacio publicitario</span></div>
 
 <script src="https://maps.googleapis.com/maps/api/js?key=GOOGLE_MAPS_KEY&callback=initMap" async defer></script>
-
 <script>
 const API = '';
 let map, markers = {}, infoWindow, allStations = [];
@@ -69,9 +103,10 @@ async function initMap() {
     mapTypeControl: false,
     streetViewControl: false,
     fullscreenControl: false,
+    zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_CENTER },
   });
   infoWindow = new google.maps.InfoWindow();
-  try { await loadStations(); } catch(e) { console.warn('Error cargando estaciones:', e); }
+  try { await loadStations(); } catch(e) { console.warn(e); }
   connectSSE();
 }
 
@@ -85,10 +120,7 @@ async function loadStations() {
 }
 
 function addOrUpdateMarker(s) {
-  if (markers[s.id]) {
-    markers[s.id].setIcon(markerIcon(s));
-    return;
-  }
+  if (markers[s.id]) { markers[s.id].setIcon(markerIcon(s)); return; }
   const marker = new google.maps.Marker({
     position: { lat: parseFloat(s.lat), lng: parseFloat(s.lng) },
     map, title: s.nombre, icon: markerIcon(s),
@@ -98,90 +130,75 @@ function addOrUpdateMarker(s) {
 }
 
 function showVoteWindow(s, marker) {
-  const total = (s.votos_hay || 0) + (s.votos_no_hay || 0);
-  const content = `
+  const total = (s.votos_hay||0) + (s.votos_no_hay||0);
+  infoWindow.setContent(`
     <div class="vote-box">
       <strong>${s.nombre}</strong>
       <span class="addr">${s.direccion || ''}</span>
       <div class="vote-btns">
-        <button class="vote-btn hay" onclick="votar(${s.id}, true)">Hay gasolina</button>
-        <button class="vote-btn nohay" onclick="votar(${s.id}, false)">Sin gasolina</button>
+        <button class="vote-btn hay" onclick="votar(${s.id}, true)">✓ Hay gasolina</button>
+        <button class="vote-btn nohay" onclick="votar(${s.id}, false)">✗ No hay</button>
       </div>
-      <div class="vote-counts" id="vc-${s.id}">${total > 0 ? total + ' votos · ' + (s.votos_hay||0) + ' hay / ' + (s.votos_no_hay||0) + ' no hay' : 'Sin votos aún'}</div>
+      <div class="vote-counts" id="vc-${s.id}">${total > 0 ? total+' votos · '+(s.votos_hay||0)+' sí / '+(s.votos_no_hay||0)+' no' : 'Sin votos — sé el primero'}</div>
       <div class="vote-msg" id="vm-${s.id}"></div>
     </div>
-  `;
-  infoWindow.setContent(content);
+  `);
   infoWindow.open(map, marker);
 }
 
 async function votar(id, tieneGasolina) {
-  const msg = document.getElementById('vm-' + id);
+  const msg = document.getElementById('vm-'+id);
   try {
-    const res = await fetch(API + '/api/vote', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ gasolinera_id: id, tiene_gasolina: tieneGasolina }),
+    const res = await fetch(API+'/api/vote', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({gasolinera_id:id, tiene_gasolina:tieneGasolina}),
     });
     const data = await res.json();
-    if (msg) {
-      msg.style.display = 'block';
-      msg.style.color = '#3B6D11';
-      msg.textContent = 'Voto registrado, gracias!';
-    }
+    if (msg) { msg.style.display='block'; msg.style.color='#3B6D11'; msg.textContent='Voto registrado, gracias!'; }
     if (data.station) {
       addOrUpdateMarker(data.station);
-      const vc = document.getElementById('vc-' + id);
+      const vc = document.getElementById('vc-'+id);
       if (vc) {
-        const t = (data.station.votos_hay||0) + (data.station.votos_no_hay||0);
-        vc.textContent = t + ' votos · ' + (data.station.votos_hay||0) + ' hay / ' + (data.station.votos_no_hay||0) + ' no hay';
+        const t = (data.station.votos_hay||0)+(data.station.votos_no_hay||0);
+        vc.textContent = t+' votos · '+(data.station.votos_hay||0)+' sí / '+(data.station.votos_no_hay||0)+' no';
       }
       updateCounts();
     }
   } catch(e) {
-    if (msg) { msg.style.display='block'; msg.style.color='#A32D2D'; msg.textContent='Error al votar, intenta de nuevo'; }
+    if (msg) { msg.style.display='block'; msg.style.color='#A32D2D'; msg.textContent='Error, intenta de nuevo'; }
   }
 }
 
 function markerIcon(s) {
-  const total = (s.votos_hay || 0) + (s.votos_no_hay || 0);
-  let color = '#888888'; // gris = sin votos
+  const total = (s.votos_hay||0)+(s.votos_no_hay||0);
+  let color = '#888888';
   if (total >= 3) color = s.tiene_gasolina ? '#639922' : '#E24B4A';
   return {
     path: google.maps.SymbolPath.CIRCLE,
     fillColor: color, fillOpacity: 1,
-    strokeColor: '#ffffff', strokeWeight: 2.5, scale: 11,
+    strokeColor: '#ffffff', strokeWeight: 2, scale: 9,
   };
 }
 
 function updateCounts() {
-  fetch(API + '/api/stations').then(r => r.json()).then(stations => {
-    const green = stations.filter(s => s.tiene_gasolina && (s.votos_hay+s.votos_no_hay) >= 3).length;
-    const red = stations.filter(s => !s.tiene_gasolina && (s.votos_hay+s.votos_no_hay) >= 3).length;
-    document.getElementById('cnt-green').textContent = green;
-    document.getElementById('cnt-red').textContent = red;
-    document.getElementById('last-update').textContent =
-      'Act. ' + new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+  fetch(API+'/api/stations').then(r=>r.json()).then(stations => {
+    document.getElementById('cnt-green').textContent = stations.filter(s=>s.tiene_gasolina&&(s.votos_hay+s.votos_no_hay)>=3).length;
+    document.getElementById('cnt-red').textContent = stations.filter(s=>!s.tiene_gasolina&&(s.votos_hay+s.votos_no_hay)>=3).length;
   }).catch(()=>{});
 }
 
 function connectSSE() {
-  const es = new EventSource(API + '/api/events');
+  const es = new EventSource(API+'/api/events');
   es.addEventListener('message', e => {
     try {
-      const { type, station } = JSON.parse(e.data);
-      if (type === 'status_update') { addOrUpdateMarker(station); updateCounts(); }
+      const {type, station} = JSON.parse(e.data);
+      if (type==='status_update') { addOrUpdateMarker(station); updateCounts(); }
     } catch(e) {}
   });
   es.onerror = () => {
     document.getElementById('live-badge').textContent = 'RECONECTANDO...';
-    document.getElementById('live-badge').style.background = '#fef9c3';
-    document.getElementById('live-badge').style.color = '#854d0e';
-    setTimeout(() => {
-      document.getElementById('live-badge').textContent = 'EN VIVO';
-      document.getElementById('live-badge').style.background = '#dcfce7';
-      document.getElementById('live-badge').style.color = '#166534';
-    }, 5000);
+    setTimeout(()=>{ document.getElementById('live-badge').textContent = 'EN VIVO'; }, 5000);
   };
 }
 </script>
