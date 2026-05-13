@@ -25,7 +25,9 @@ app.get('/', (req, res) => {
   res.send(html);
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.get('/gramyfruts.png', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/gramyfruts.png'));
+});
 
 // ─── SSE ─────────────────────────────────────────────────────────────────────
 
