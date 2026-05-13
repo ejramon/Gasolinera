@@ -7,8 +7,8 @@
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;font-family:'Inter',sans-serif;overflow:hidden}
-    #ad-top{position:fixed;top:0;left:0;right:0;height:60px;background:#f0f0f0;border-bottom:1px solid #ddd;display:flex;align-items:center;justify-content:center;z-index:200;-webkit-transform:translateZ(0)}
-    #ad-top span{font-size:11px;color:#bbb;letter-spacing:2px;text-transform:uppercase}
+    #banner-top{position:fixed;top:0;left:0;right:0;height:60px;background:#f0f0f0;border-bottom:1px solid #ddd;display:flex;align-items:center;justify-content:center;z-index:200;-webkit-transform:translateZ(0)}
+    #banner-top span{font-size:11px;color:#bbb;letter-spacing:2px;text-transform:uppercase}
     #header{position:fixed;top:60px;left:0;right:0;height:48px;background:#fff;border-bottom:1px solid #e5e5e3;display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100;-webkit-transform:translateZ(0)}
     #header-left{display:flex;align-items:center;gap:8px}
     #header h1{font-size:15px;font-weight:700;color:#1a1a1a;margin:0}
@@ -19,8 +19,8 @@
     #map{position:fixed;top:108px;left:0;right:0;bottom:70px;width:100%;height:calc(100vh - 178px)}
     #legend{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.95);border:1px solid #e5e5e3;border-radius:20px;padding:6px 16px;display:flex;gap:14px;font-size:11px;color:#555;z-index:10;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
     .ldot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle}
-    #ad-bottom{position:fixed;bottom:0;left:0;right:0;height:70px;background:#f0f0f0;border-top:1px solid #ddd;display:flex;align-items:center;justify-content:center;z-index:200;-webkit-transform:translateZ(0)}
-    #ad-bottom span{font-size:11px;color:#bbb;letter-spacing:2px;text-transform:uppercase}
+    #banner-bottom{position:fixed;bottom:0;left:0;right:0;height:70px;background:#f0f0f0;border-top:1px solid #ddd;display:flex;align-items:center;justify-content:center;z-index:200;-webkit-transform:translateZ(0)}
+    #banner-bottom span{font-size:11px;color:#bbb;letter-spacing:2px;text-transform:uppercase}
     .vote-box{font-family:sans-serif;padding:6px 2px;min-width:220px}
     .vote-box strong{font-size:14px;display:block;margin-bottom:2px;color:#1a1a1a}
     .vote-box .addr{font-size:11px;color:#888;margin-bottom:10px;display:block}
@@ -37,7 +37,7 @@
 </head>
 <body>
 
-<div id="ad-top"><img src="gramyfruts.png" style="height:100%;width:100%;object-fit:contain"/></div>
+<div id="banner-top"><span>espacio publicitario</span></div>
 
 <div id="header">
   <div id="header-left">
@@ -59,7 +59,7 @@
   <span><span class="ldot" style="background:#E24B4A"></span>No hay</span>
 </div>
 
-<div id="ad-bottom"><span>espacio publicitario</span></div>
+<div id="banner-bottom"><img src="gramyfruts.png" style="height:100%;width:100%;object-fit:contain"/></div>
 
 <script src="https://maps.googleapis.com/maps/api/js?key=GOOGLE_MAPS_KEY&callback=initMap" async defer></script>
 <script>
